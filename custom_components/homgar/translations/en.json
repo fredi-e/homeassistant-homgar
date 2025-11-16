@@ -19,9 +19,13 @@
             }
         },
         "error": {
-            "auth": "Authentication failed. Please check your credentials.",
-            "select_at_least_one": "Please select a home.",
-            "unknown": "Unexpected error while connecting to HomGar."
+            "auth_failed": "Authentication failed. Please check your credentials.",
+            "cannot_connect": "Unable to connect to HomGar. Please try again.",
+            "no_homes": "No HomGar homes were found for this account.",
+            "select_at_least_one": "Please select a home."
+        },
+        "abort": {
+            "already_configured": "This HomGar account is already configured."
         }
     }
 }
