@@ -1,17 +1,8 @@
 # HomGar Cloud integration for Home Assistant
 
-Custom integration for Home Assistant that connects to the HomGar cloud API and exposes RF soil moisture and rain sensors as native HA entities.
+Unofficial Home Assistant component for HomGar Cloud, supporting RF soil moisture and rain sensors via the HomGar cloud API.
 
-Tested with:
-
-- Hub: `HWG023WBRF-V2`
-- Soil moisture probes:
-  - `HCS026FRF` (moisture-only)
-  - `HCS021FRF` (moisture + temperature + lux)
-- Rain gauge:
-  - `HCS012ARF`
-
-The integration talks to the cloud endpoints used by the HomGar app (`region3.homgarus.com`) and decodes RF payloads into structured sensor data.
+---
 
 ## Features
 
@@ -32,99 +23,67 @@ The integration talks to the cloud endpoints used by the HomGar app (`region3.ho
   - `battery_status_code`
   - `last_updated` (cloud timestamp)
 
-## Installation (HACS - Custom Repository)
+## Compatibility
 
-1. Go to **HACS → Integrations → 3-dot menu → Custom repositories**
-2. Add your repository URL:
-   ```
-   https://github.com/brettmeyerowitz/homeassistant-homgar
-   ```
-3. Category: **Integration**
-4. Install
-5. Restart Home Assistant
+Tested with:
+- Hub: `HWG023WBRF-V2`
+- Soil moisture probes:
+  - `HCS026FRF` (moisture-only)
+  - `HCS021FRF` (moisture + temperature + lux)
+- Rain gauge:
+  - `HCS012ARF`
 
-## Manual installation
+The integration communicates with the same cloud endpoints as the HomGar app (`region3.homgarus.com`).
 
-Copy the folder:
+---
 
-```
-custom_components/homgar
-```
+## Installation
 
-into:
+### Easy Installation via HACS
 
-```
-/config/custom_components/
-```
+You can quickly add this repository to HACS by clicking the button below:
 
-Restart Home Assistant.
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=brettmeyerowitz&repository=homeassistant-homgar&category=integration)
+
+#### Manual Installation
+
+1. Copy the `custom_components/homgar` folder into your Home Assistant `config/custom_components/` directory.
+2. Restart Home Assistant.
+
+---
 
 ## Configuration
 
-1. Go to **Settings → Devices & services → Add Integration**
-2. Search for **HomGar Cloud**
-3. Enter:
-   - Area code
-   - Email
-   - Password
-4. Select which Home to use
-5. Sensors will auto-populate
+Go to **Settings → Devices & Services → Add Integration** and search for **HomGar Cloud**. Enter your HomGar account credentials (email and area code) to connect.
 
-## Example Automation (Sunrise-based irrigation)
+---
 
-```yaml
-alias: Irrigation - morning garden cycle
-trigger:
-  - platform: sun
-    event: sunrise
-    offset: "-01:00:00"
+## Example manifest.json
 
-condition:
-  - condition: template
-    value_template: >
-      {{ (now().toordinal() % 2) == 0 }}
+Below is the manifest file for this integration (as of version 0.1.1):
 
-  - condition: template
-    value_template: >
-      {% set bottom = states('sensor.bar_side_bottom_moisture_percent')|float(0) %}
-      {% set top = states('sensor.bar_side_top_moisture_percent')|float(0) %}
-      {% set middle = states('sensor.homgar_garden_middle_moisture_percent')|float(0) %}
-      {{ [bottom, top, middle] | min < 35 }}
-
-  - condition: template
-    value_template: >
-      {% set rain24 = states('sensor.homgar_rain_sensor_rain_last_24h')|float(0) %}
-      {% set rain1 = states('sensor.homgar_rain_sensor_rain_last_hour')|float(0) %}
-      {{ rain24 < 2 and rain1 < 0.5 }}
-
-action:
-  - service: switch.turn_on
-    target:
-      entity_id: switch.bar_side_garden_irrigation
-  - delay: "00:10:00"
-  - service: switch.turn_off
-    target:
-      entity_id: switch.bar_side_garden_irrigation
-
-  - delay: "00:10:00"
-
-  - service: switch.turn_on
-    target:
-      entity_id: switch.hot_tub_side_garden_irrigation
-  - delay: "00:10:00"
-  - service: switch.turn_off
-    target:
-      entity_id: switch.hot_tub_side_garden_irrigation
+```json
+{
+    "domain": "homgar",
+    "name": "HomGar Cloud",
+    "version": "0.1.1",
+    "documentation": "https://github.com/brettmeyerowitz/homeassistant-homgar",
+    "issue_tracker": "https://github.com/brettmeyerowitz/homeassistant-homgar/issues",
+    "requirements": [],
+    "codeowners": [
+        "@brettmeyerowitz"
+    ],
+    "config_flow": true,
+    "iot_class": "cloud_polling",
+    "integration_type": "hub",
+    "loggers": [
+        "custom_components.homgar"
+    ]
+}
 ```
 
-## Troubleshooting
+---
 
-Enable debug logs:
+## Credits
 
-```yaml
-logger:
-  logs:
-    custom_components.homgar: debug
-```
-
-Check logs after restart for API or decoder errors.
+This integration was developed by Brett Meyerowitz. It is not affiliated with HomGar. Feedback and contributions are welcome!
