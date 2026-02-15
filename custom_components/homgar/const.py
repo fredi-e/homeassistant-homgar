@@ -13,6 +13,11 @@ CONF_REFRESH_TOKEN = "refresh_token"
 CONF_TOKEN_EXPIRES_AT = "token_expires_at"
 
 # Known models
-MODEL_MOISTURE_SIMPLE = "HCS026FRF"
-MODEL_MOISTURE_FULL = "HCS021FRF"
-MODEL_RAIN = "HCS012ARF"
+MODEL_MOISTURE_SIMPLE = "HCS026FRF"  # Moisture only
+MODEL_MOISTURE_FULL = "HCS021FRF"    # Moisture + temp + lux
+MODEL_RAIN = "HCS012ARF"             # Rain gauge
+# Additional models from Node-RED flow
+MODEL_TEMPHUM = "HCS014ARF"          # Temperature/Humidity
+MODEL_FLOWMETER = "HCS008FRF"        # Flowmeter
+MODEL_CO2 = "HCS0530THO"             # CO2/Temp/Humidity
+MODEL_POOL = "HCS0528ARF"            # Pool/Temperature

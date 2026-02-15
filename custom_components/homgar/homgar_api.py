@@ -301,3 +301,118 @@ def decode_rain(raw: str) -> dict:
         "battery_status_code": status_code,
         "raw_bytes": b,
     }
+
+
+# --- Additional decoders (stubs) for new sensor types ---
+def decode_temphum(raw: str) -> dict:
+    """
+    Decode HCS014ARF (temperature/humidity) payload.
+    """
+    b = _parse_homgar_payload(raw)
+    # See Node-RED: function "Temperature HCS014ARF"
+    part1 = b[7:9]
+    part2 = b[5:7]
+    part3 = b[11:13]
+    part4 = b[9:11]
+    part5 = b[25:27]
+    part6 = b[23:25]
+    part7 = b[29]
+    part8 = b[35]
+    part9 = b[33]
+    part10 = b[39:41]
+    part11 = b[37:39]
+    def le_val(parts):
+        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
+    templow = (((le_val(part1+part2) / 10) - 32) * (5 / 9)) if part1 and part2 else None
+    temphigh = (((le_val(part3+part4) / 10) - 32) * (5 / 9)) if part3 and part4 else None
+    tempcurrent = (((le_val(part5+part6) / 10) - 32) * (5 / 9)) if part5 and part6 else None
+    humiditycurrent = b[29] if len(b) > 29 else None
+    humidityhigh = b[35] if len(b) > 35 else None
+    humiditylow = b[33] if len(b) > 33 else None
+    tempbatt = (le_val(part10+part11) / 4095 * 100) if part10 and part11 else None
+    return {
+        "type": "temphum",
+        "templow": round(templow, 2) if templow is not None else None,
+        "temphigh": round(temphigh, 2) if temphigh is not None else None,
+        "tempcurrent": round(tempcurrent, 2) if tempcurrent is not None else None,
+        "humiditycurrent": humiditycurrent,
+        "humidityhigh": humidityhigh,
+        "humiditylow": humiditylow,
+        "tempbatt": round(tempbatt, 2) if tempbatt is not None else None,
+        "raw_bytes": b,
+    }
+
+def decode_flowmeter(raw: str) -> dict:
+    """
+    Decode HCS008FRF (flowmeter) payload.
+    """
+    b = _parse_homgar_payload(raw)
+    # See Node-RED: function "Flowmeter HCS008FRF"
+    def le_val(parts):
+        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
+    flowcurrentused = le_val(b[49:52]) / 10 if len(b) >= 52 else None
+    flowcurrenduration = le_val(b[59:62]) if len(b) >= 62 else None
+    flowlastused = le_val(b[69:72]) / 10 if len(b) >= 72 else None
+    flowlastusedduration = le_val(b[81:84]) if len(b) >= 84 else None
+    flowtotaltoday = le_val(b[91:94]) / 10 if len(b) >= 94 else None
+    flowtotal = le_val(b[103:107]) / 10 if len(b) >= 107 else None
+    flowbatt = le_val(b[107:111]) / 4095 * 100 if len(b) >= 111 else None
+    return {
+        "type": "flowmeter",
+        "flowcurrentused": flowcurrentused,
+        "flowcurrenduration": flowcurrenduration,
+        "flowlastused": flowlastused,
+        "flowlastusedduration": flowlastusedduration,
+        "flowtotaltoday": flowtotaltoday,
+        "flowtotal": flowtotal,
+        "flowbatt": round(flowbatt, 2) if flowbatt is not None else None,
+        "raw_bytes": b,
+    }
+
+def decode_co2(raw: str) -> dict:
+    """
+    Decode HCS0530THO (CO2/temp/humidity) payload.
+    """
+    b = _parse_homgar_payload(raw)
+    # See Node-RED: function "CO2 HCS0530THO"
+    def le_val(parts):
+        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
+    co2 = le_val(b[7:9]+b[5:7]) if len(b) >= 9 else None
+    co2low = le_val(b[53:55]+b[51:53]) if len(b) >= 55 else None
+    co2high = le_val(b[57:59]+b[55:57]) if len(b) >= 59 else None
+    co2temp = (((le_val(b[35:37]+b[33:35]) / 10) - 32) * (5 / 9)) if len(b) >= 37 else None
+    co2humidity = b[39] if len(b) > 39 else None
+    co2batt = le_val(b[61:63]+b[59:61]) / 4095 * 100 if len(b) >= 63 else None
+    co2rssi = b[67] - 256 if len(b) > 67 and b[67] > 127 else b[67] if len(b) > 67 else None
+    return {
+        "type": "co2",
+        "co2": co2,
+        "co2low": co2low,
+        "co2high": co2high,
+        "co2temp": round(co2temp, 2) if co2temp is not None else None,
+        "co2humidity": co2humidity,
+        "co2batt": round(co2batt, 2) if co2batt is not None else None,
+        "co2rssi": co2rssi,
+        "raw_bytes": b,
+    }
+
+def decode_pool(raw: str) -> dict:
+    """
+    Decode HCS0528ARF (pool/temperature) payload.
+    """
+    b = _parse_homgar_payload(raw)
+    # See Node-RED: function "Pool"
+    def le_val(parts):
+        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
+    templow = (((le_val(b[7:9]+b[5:7]) / 10) - 32) * (5 / 9)) if len(b) >= 9 else None
+    temphigh = (((le_val(b[11:13]+b[9:11]) / 10) - 32) * (5 / 9)) if len(b) >= 13 else None
+    tempcurrent = (((le_val(b[25:27]+b[23:25]) / 10) - 32) * (5 / 9)) if len(b) >= 27 else None
+    tempbatt = le_val(b[29:31]+b[25:27]) / 4095 * 100 if len(b) >= 31 else None
+    return {
+        "type": "pool",
+        "templow": round(templow, 2) if templow is not None else None,
+        "temphigh": round(temphigh, 2) if temphigh is not None else None,
+        "tempcurrent": round(tempcurrent, 2) if tempcurrent is not None else None,
+        "tempbatt": round(tempbatt, 2) if tempbatt is not None else None,
+        "raw_bytes": b,
+    }

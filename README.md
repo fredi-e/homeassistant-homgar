@@ -4,6 +4,24 @@ Unofficial Home Assistant component for HomGar Cloud, supporting RF soil moistur
 
 ---
 
+## Compatibility
+
+Tested with:
+- Hub: `HWG023WBRF-V2`
+- Soil moisture probes:
+  - `HCS026FRF` (moisture-only)
+  - `HCS021FRF` (moisture + temperature + lux)
+  - `HCS014ARF` (temperature + humidity)
+  - `HCS008FRF` (flowmeter)
+  - `HCS0530THO` (CO2/temp/humidity)
+  - `HCS0528ARF` (pool/temperature)
+- Rain gauge:
+  - `HCS012ARF`
+
+The integration communicates with the same cloud endpoints as the HomGar app (`region3.homgarus.com`).
+
+---
+
 ## Features
 
 - Login with your HomGar account (email + area code)
@@ -18,22 +36,14 @@ Unofficial Home Assistant component for HomGar Cloud, supporting RF soil moistur
     - Last 24 hours
     - Last 7 days
     - Total rainfall
+  - Temperature/Humidity (HCS014ARF)
+  - Flowmeter readings (HCS008FRF)
+  - CO2, temperature, humidity (HCS0530THO)
+  - Pool temperature (HCS0528ARF)
 - Attributes:
   - `rssi_dbm`
   - `battery_status_code`
   - `last_updated` (cloud timestamp)
-
-## Compatibility
-
-Tested with:
-- Hub: `HWG023WBRF-V2`
-- Soil moisture probes:
-  - `HCS026FRF` (moisture-only)
-  - `HCS021FRF` (moisture + temperature + lux)
-- Rain gauge:
-  - `HCS012ARF`
-
-The integration communicates with the same cloud endpoints as the HomGar app (`region3.homgarus.com`).
 
 ---
 
@@ -86,4 +96,8 @@ Below is the manifest file for this integration (as of version 0.1.1):
 
 ## Credits
 
-This integration was developed by Brett Meyerowitz. It is not affiliated with HomGar. Feedback and contributions are welcome!
+This integration was developed by Brett Meyerowitz. It is not affiliated with HomGar.
+
+**Special thanks to [shaundekok/rainpoint](https://github.com/shaundekok/rainpoint) for Node-RED flow inspiration, payload decoding, and entity mapping logic.**
+
+Feedback and contributions are welcome!

@@ -13,8 +13,16 @@ from .const import (
     MODEL_MOISTURE_SIMPLE,
     MODEL_MOISTURE_FULL,
     MODEL_RAIN,
+    MODEL_TEMPHUM,
+    MODEL_FLOWMETER,
+    MODEL_CO2,
+    MODEL_POOL,
 )
-from .homgar_api import HomGarClient, HomGarApiError, decode_moisture_simple, decode_moisture_full, decode_rain
+from .homgar_api import (
+    HomGarClient, HomGarApiError,
+    decode_moisture_simple, decode_moisture_full, decode_rain,
+    decode_temphum, decode_flowmeter, decode_co2, decode_pool
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -84,6 +92,14 @@ class HomGarCoordinator(DataUpdateCoordinator):
                                 decoded = decode_moisture_full(raw_value)
                             elif model == MODEL_RAIN:
                                 decoded = decode_rain(raw_value)
+                            elif model == MODEL_TEMPHUM:
+                                decoded = decode_temphum(raw_value)
+                            elif model == MODEL_FLOWMETER:
+                                decoded = decode_flowmeter(raw_value)
+                            elif model == MODEL_CO2:
+                                decoded = decode_co2(raw_value)
+                            elif model == MODEL_POOL:
+                                decoded = decode_pool(raw_value)
                             else:
                                 decoded = None
                         except Exception as ex:  # noqa: BLE001
