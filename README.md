@@ -11,12 +11,16 @@ Tested with:
 - Soil moisture probes:
   - `HCS026FRF` (moisture-only)
   - `HCS021FRF` (moisture + temperature + lux)
-  - `HCS014ARF` (temperature + humidity)
-  - `HCS008FRF` (flowmeter)
-  - `HCS0530THO` (CO2/temp/humidity)
-  - `HCS0528ARF` (pool/temperature)
 - Rain gauge:
   - `HCS012ARF`
+- Temperature/Humidity:
+  - `HCS014ARF`
+- Flowmeter:
+  - `HCS008FRF`
+- CO2/Temperature/Humidity:
+  - `HCS0530THO`
+- Pool/Temperature:
+  - `HCS0528ARF`
 
 The integration communicates with the same cloud endpoints as the HomGar app (`region3.homgarus.com`).
 
