@@ -450,8 +450,6 @@ async def async_setup_entry(
             def native_value(self):
                 data = self._sensor_data
                 return data.get("tempbatt") if data else None
-        else:
-            _LOGGER.debug("Skipping unsupported model %s", model)
 
     if entities:
         async_add_entities(entities)
