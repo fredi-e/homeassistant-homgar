@@ -17,6 +17,7 @@ from .const import (
     MODEL_FLOWMETER,
     MODEL_CO2,
     MODEL_POOL,
+    MODEL_DISPLAY_HUB,
 )
 from .homgar_api import (
     HomGarClient, HomGarApiError,
@@ -104,8 +105,12 @@ class HomGarCoordinator(DataUpdateCoordinator):
                                 decoded = decode_co2(raw_value)
                             elif model == MODEL_POOL:
                                 decoded = decode_pool(raw_value)
+                            elif model == MODEL_DISPLAY_HUB:
+                                from .homgar_api import decode_hws019wrf_v2
+                                decoded = decode_hws019wrf_v2(raw_value)
                             else:
                                 decoded = None
+                                _LOGGER.warning("Unknown/unsupported model=%s for mid=%s addr=%s, raw_value=%s", model, mid, addr, raw_value)
                             _LOGGER.debug("Decoded data for mid=%s addr=%s: %s", mid, addr, decoded)
                         except Exception as ex:  # noqa: BLE001
                             _LOGGER.warning(
