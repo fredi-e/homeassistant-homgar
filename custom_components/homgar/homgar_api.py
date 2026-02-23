@@ -4,11 +4,11 @@ def decode_hws019wrf_v2(raw: str) -> dict:
     Decode HWS019WRF-V2 (Display Hub) CSV/semicolon payload.
     Example: '1,0,1;788(788/777/1),68(68/64/1),P=9685(9684/9684/1),'
     """
+    _LOGGER.debug("decode_hws019wrf_v2 called with raw: %r", raw)
     try:
         parts = raw.split(';')
         # First part: status flags (e.g., '1,0,1')
         flags = [int(x) for x in parts[0].split(',') if x.strip().isdigit()]
-        # Second part: sensor readings (e.g., '788(788/777/1),68(68/64/1),P=9685(9684/9684/1),')
         readings = {}
         if len(parts) > 1:
             for item in parts[1].split(','):
@@ -21,14 +21,16 @@ def decode_hws019wrf_v2(raw: str) -> dict:
                 elif '=' in item:
                     key, val = item.split('=', 1)
                     readings[key.strip()] = val.strip()
-        return {
+        result = {
             "type": "hws019wrf_v2",
             "flags": flags,
             "readings": readings,
             "raw": raw,
         }
+        _LOGGER.debug("decode_hws019wrf_v2 result: %r", result)
+        return result
     except Exception as ex:
-        _LOGGER.warning("Failed to decode HWS019WRF-V2 payload: %s", ex)
+        _LOGGER.warning("Failed to decode HWS019WRF-V2 payload: %s (raw: %r)", ex, raw)
         return {"type": "hws019wrf_v2", "raw": raw, "error": str(ex)}
 import asyncio
 import hashlib
