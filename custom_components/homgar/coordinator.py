@@ -61,6 +61,8 @@ class HomGarCoordinator(DataUpdateCoordinator):
                 status = await self._client.get_device_status(mid)
                 status_by_mid[mid] = status
 
+                _LOGGER.debug("Fetched status for mid=%s: %s", mid, status)
+
                 sub_status = {s["id"]: s for s in status.get("subDeviceStatus", [])}
 
                 # Map addr -> subDevice
@@ -83,9 +85,11 @@ class HomGarCoordinator(DataUpdateCoordinator):
                     if not raw_value:
                         # No reading / offline
                         decoded = None
+                        _LOGGER.debug("No raw_value for mid=%s addr=%s (sid=%s)", mid, addr, sid)
                     else:
                         model = sub.get("model")
                         try:
+                            _LOGGER.debug("Decoding payload for model=%s mid=%s addr=%s: %s", model, mid, addr, raw_value)
                             if model == MODEL_MOISTURE_SIMPLE:
                                 decoded = decode_moisture_simple(raw_value)
                             elif model == MODEL_MOISTURE_FULL:
@@ -102,6 +106,7 @@ class HomGarCoordinator(DataUpdateCoordinator):
                                 decoded = decode_pool(raw_value)
                             else:
                                 decoded = None
+                            _LOGGER.debug("Decoded data for mid=%s addr=%s: %s", mid, addr, decoded)
                         except Exception as ex:  # noqa: BLE001
                             _LOGGER.warning(
                                 "Failed to decode payload for %s addr=%s: %s",
@@ -123,6 +128,8 @@ class HomGarCoordinator(DataUpdateCoordinator):
                         "raw_status": s,
                         "data": decoded,
                     }
+
+                    _LOGGER.debug("Sensor entity key=%s info=%s", sensor_key, decoded_sensors[sensor_key])
 
             return {
                 "hubs": hubs,

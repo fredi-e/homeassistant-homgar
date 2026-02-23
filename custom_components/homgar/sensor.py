@@ -59,6 +59,7 @@ async def async_setup_entry(
             base_slug_parts.append(_slugify(home_name))
         base_slug_parts.append(_slugify(sub_name))
         base_slug = "_".join(base_slug_parts)
+        _LOGGER.debug("Creating sensor entity: key=%s, model=%s, sub_name=%s, home_name=%s, base_slug=%s, info=%s", key, model, sub_name, home_name, base_slug, info)
 
         if model == MODEL_MOISTURE_SIMPLE:
             # Moisture only
@@ -471,18 +472,32 @@ class HomGarSensorBase(CoordinatorEntity, SensorEntity):
         self._sensor_key = sensor_key
         self._sensor_info = sensor_info
         self._base_slug = base_slug
+        _LOGGER.debug("Initialized HomGarSensorBase: sensor_key=%s, sensor_info=%s, base_slug=%s", sensor_key, sensor_info, base_slug)
 
     @property
     def _sensor_data(self) -> dict | None:
         sensors = self.coordinator.data.get("sensors", {})
         info = sensors.get(self._sensor_key)
         if not info:
+            _LOGGER.debug("Sensor key %s not found in coordinator data", self._sensor_key)
             return None
-        return info.get("data")
+        data = info.get("data")
+        _LOGGER.debug("Sensor key %s data: %s", self._sensor_key, data)
+        return data
 
     @property
     def available(self) -> bool:
-        return self._sensor_data is not None
+        available = self._sensor_data is not None
+        _LOGGER.debug("Sensor %s available: %s", self._sensor_key, available)
+        return available
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        _LOGGER.debug("Sensor entity added to hass: %s", self._sensor_key)
+
+    def _handle_coordinator_update(self) -> None:
+        _LOGGER.debug("Coordinator update for sensor: %s", self._sensor_key)
+        super()._handle_coordinator_update()
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -551,9 +566,9 @@ class HomGarMoisturePercentSensor(HomGarSensorBase):
     @property
     def native_value(self) -> float | None:
         data = self._sensor_data
-        if not data:
-            return None
-        return data.get("moisture_percent")
+        value = data.get("moisture_percent") if data else None
+        _LOGGER.debug("native_value for %s (moisture_percent): %s", self._sensor_key, value)
+        return value
 
 
 class HomGarTemperatureSensor(HomGarSensorBase):
@@ -578,9 +593,9 @@ class HomGarTemperatureSensor(HomGarSensorBase):
     @property
     def native_value(self) -> float | None:
         data = self._sensor_data
-        if not data:
-            return None
-        return round(data.get("temperature_c"), 1) if data.get("temperature_c") is not None else None
+        value = round(data.get("temperature_c"), 1) if data and data.get("temperature_c") is not None else None
+        _LOGGER.debug("native_value for %s (temperature_c): %s", self._sensor_key, value)
+        return value
 
 
 class HomGarIlluminanceSensor(HomGarSensorBase):
@@ -605,9 +620,9 @@ class HomGarIlluminanceSensor(HomGarSensorBase):
     @property
     def native_value(self) -> float | None:
         data = self._sensor_data
-        if not data:
-            return None
-        return data.get("illuminance_lux")
+        value = data.get("illuminance_lux") if data else None
+        _LOGGER.debug("native_value for %s (illuminance_lux): %s", self._sensor_key, value)
+        return value
 
 
 class HomGarRainSensor(HomGarSensorBase):

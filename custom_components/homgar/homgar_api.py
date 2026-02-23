@@ -116,10 +116,12 @@ class HomGarClient:
     async def list_homes(self) -> list[dict]:
         await self.ensure_logged_in()
         url = f"{self._base_url}/app/member/appHome/list"
+        _LOGGER.debug("API call: list_homes URL=%s", url)
         async with self._session.get(url, headers=self._auth_headers()) as resp:
             if resp.status != 200:
                 raise HomGarApiError(f"list_homes HTTP {resp.status}")
             data = await resp.json()
+        _LOGGER.debug("API response: list_homes data=%s", data)
         if data.get("code") != 0:
             raise HomGarApiError(f"list_homes failed: {data}")
         return data.get("data", [])
@@ -127,10 +129,13 @@ class HomGarClient:
     async def get_devices_by_hid(self, hid: int) -> list[dict]:
         await self.ensure_logged_in()
         url = f"{self._base_url}/app/device/getDeviceByHid"
-        async with self._session.get(url, params={"hid": hid}, headers=self._auth_headers()) as resp:
+        params = {"hid": hid}
+        _LOGGER.debug("API call: get_devices_by_hid URL=%s params=%s", url, params)
+        async with self._session.get(url, params=params, headers=self._auth_headers()) as resp:
             if resp.status != 200:
                 raise HomGarApiError(f"getDeviceByHid HTTP {resp.status}")
             data = await resp.json()
+        _LOGGER.debug("API response: get_devices_by_hid data=%s", data)
         if data.get("code") != 0:
             raise HomGarApiError(f"getDeviceByHid failed: {data}")
         return data.get("data", [])
@@ -138,10 +143,13 @@ class HomGarClient:
     async def get_device_status(self, mid: int) -> dict:
         await self.ensure_logged_in()
         url = f"{self._base_url}/app/device/getDeviceStatus"
-        async with self._session.get(url, params={"mid": mid}, headers=self._auth_headers()) as resp:
+        params = {"mid": mid}
+        _LOGGER.debug("API call: get_device_status URL=%s params=%s", url, params)
+        async with self._session.get(url, params=params, headers=self._auth_headers()) as resp:
             if resp.status != 200:
                 raise HomGarApiError(f"getDeviceStatus HTTP {resp.status}")
             data = await resp.json()
+        _LOGGER.debug("API response: get_device_status data=%s", data)
         if data.get("code") != 0:
             raise HomGarApiError(f"getDeviceStatus failed: {data}")
         return data.get("data", {})
