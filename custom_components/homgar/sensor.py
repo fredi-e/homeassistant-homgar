@@ -25,6 +25,7 @@ from .const import (
     MODEL_FLOWMETER,
     MODEL_CO2,
     MODEL_POOL,
+    MODEL_DISPLAY_HUB
 )
 from .coordinator import HomGarCoordinator
 
@@ -61,71 +62,22 @@ async def async_setup_entry(
         base_slug = "_".join(base_slug_parts)
         _LOGGER.debug("Creating sensor entity: key=%s, model=%s, sub_name=%s, home_name=%s, base_slug=%s, info=%s", key, model, sub_name, home_name, base_slug, info)
 
-        if model == MODEL_MOISTURE_SIMPLE:
-            # Moisture only
-            entities.append(
-                HomGarMoisturePercentSensor(
-                    coordinator, key, info, base_slug, simple=True
-                )
-            )
+        if model == MODEL_DISPLAY_HUB:
+            data = info.get("data", {})
+            readings = data.get("readings", {}) if data else {}
+            for reading_key, reading_val in readings.items():
+                entities.append(DisplayHubReadingSensor(coordinator, key, info, base_slug, reading_key))
+        elif model == MODEL_MOISTURE_SIMPLE:
+            entities.append(HomGarMoisturePercentSensor(coordinator, key, info, base_slug, simple=True))
         elif model == MODEL_MOISTURE_FULL:
-            # Moisture + temp + lux
-            entities.append(
-                HomGarMoisturePercentSensor(
-                    coordinator, key, info, base_slug, simple=False
-                )
-            )
-            entities.append(
-                HomGarTemperatureSensor(
-                    coordinator, key, info, base_slug
-                )
-            )
-            entities.append(
-                HomGarIlluminanceSensor(
-                    coordinator, key, info, base_slug
-                )
-            )
+            entities.append(HomGarMoisturePercentSensor(coordinator, key, info, base_slug, simple=False))
+            entities.append(HomGarTemperatureSensor(coordinator, key, info, base_slug))
+            entities.append(HomGarIlluminanceSensor(coordinator, key, info, base_slug))
         elif model == MODEL_RAIN:
-            entities.append(
-                HomGarRainSensor(
-                    coordinator,
-                    key,
-                    info,
-                    base_slug,
-                    "rain_last_hour_mm",
-                    "rain last hour",
-                )
-            )
-            entities.append(
-                HomGarRainSensor(
-                    coordinator,
-                    key,
-                    info,
-                    base_slug,
-                    "rain_last_24h_mm",
-                    "rain last 24h",
-                )
-            )
-            entities.append(
-                HomGarRainSensor(
-                    coordinator,
-                    key,
-                    info,
-                    base_slug,
-                    "rain_last_7d_mm",
-                    "rain last 7d",
-                )
-            )
-            entities.append(
-                HomGarRainSensor(
-                    coordinator,
-                    key,
-                    info,
-                    base_slug,
-                    "rain_total_mm",
-                    "rain total",
-                )
-            )
+            entities.append(HomGarRainSensor(coordinator, key, info, base_slug, "rain_last_hour_mm", "rain last hour"))
+            entities.append(HomGarRainSensor(coordinator, key, info, base_slug, "rain_last_24h_mm", "rain last 24h"))
+            entities.append(HomGarRainSensor(coordinator, key, info, base_slug, "rain_last_7d_mm", "rain last 7d"))
+            entities.append(HomGarRainSensor(coordinator, key, info, base_slug, "rain_total_mm", "rain total"))
         elif model == MODEL_TEMPHUM:
             entities.append(HomGarTempHumCurrentSensor(coordinator, key, info, base_slug))
             entities.append(HomGarTempHumHighSensor(coordinator, key, info, base_slug))
@@ -153,6 +105,30 @@ async def async_setup_entry(
             entities.append(HomGarPoolHighTempSensor(coordinator, key, info, base_slug))
             entities.append(HomGarPoolLowTempSensor(coordinator, key, info, base_slug))
             entities.append(HomGarPoolBatterySensor(coordinator, key, info, base_slug))
+
+        class DisplayHubReadingSensor(HomGarSensorBase):
+            """Sensor for each Display Hub reading."""
+            _attr_state_class = SensorStateClass.MEASUREMENT
+
+            def __init__(self, coordinator, sensor_key, sensor_info, base_slug, reading_key):
+                super().__init__(coordinator, sensor_key, sensor_info, base_slug)
+                self._reading_key = reading_key
+                self._attr_unique_id = f"homgar_{base_slug}_displayhub_{reading_key}"
+                sub_name = sensor_info.get("sub_name") or "Display Hub"
+                self._attr_name = f"{sub_name} {reading_key}"
+
+            @property
+            def native_value(self):
+                data = self._sensor_data
+                if not data:
+                    return None
+                readings = data.get("readings", {})
+                value = readings.get(self._reading_key)
+                # Try to convert to float if possible
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    return value
         # --- Additional entity classes for new sensor types ---
 
         # HCS014ARF (Temperature/Humidity)
