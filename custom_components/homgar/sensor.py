@@ -117,7 +117,7 @@ async def async_setup_entry(
                 )
             )
             entities.append(
-                HomGarRainSensor(
+                HomGarRainTotalSensor(
                     coordinator,
                     key,
                     info,
@@ -370,6 +370,11 @@ class HomGarRainSensor(HomGarSensorBase):
         return round(val, 1)
 
 
+class HomGarRainTotalSensor(HomGarRainSensor):
+    """All-time cumulative rain total — TOTAL_INCREASING for proper HA statistics."""
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+
 # HCS014ARF (Temperature/Humidity)
 class HomGarTempHumCurrentSensor(HomGarSensorBase):
     _attr_device_class = SensorDeviceClass.TEMPERATURE
@@ -545,7 +550,7 @@ class HomGarFlowTotalTodaySensor(HomGarSensorBase):
 
 class HomGarFlowTotalSensor(HomGarSensorBase):
     _attr_native_unit_of_measurement = "L"
-    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
 
     def __init__(self, coordinator, sensor_key, sensor_info, base_slug):
         super().__init__(coordinator, sensor_key, sensor_info, base_slug)

@@ -1,38 +1,3 @@
-# Decoder for HWS019WRF-V2 (Display Hub) CSV/semicolon payload
-def decode_hws019wrf_v2(raw: str) -> dict:
-    """
-    Decode HWS019WRF-V2 (Display Hub) CSV/semicolon payload.
-    Example: '1,0,1;788(788/777/1),68(68/64/1),P=9685(9684/9684/1),'
-    """
-    _LOGGER.debug("decode_hws019wrf_v2 called with raw: %r", raw)
-    try:
-        parts = raw.split(';')
-        # First part: status flags (e.g., '1,0,1')
-        flags = [int(x) for x in parts[0].split(',') if x.strip().isdigit()]
-        readings = {}
-        if len(parts) > 1:
-            for item in parts[1].split(','):
-                item = item.strip()
-                if not item:
-                    continue
-                if '(' in item:
-                    key, val = item.split('(', 1)
-                    readings[key.strip()] = val.strip(')')
-                elif '=' in item:
-                    key, val = item.split('=', 1)
-                    readings[key.strip()] = val.strip()
-        result = {
-            "type": "hws019wrf_v2",
-            "flags": flags,
-            "readings": readings,
-            "raw": raw,
-        }
-        _LOGGER.debug("decode_hws019wrf_v2 result: %r", result)
-        return result
-    except Exception as ex:
-        _LOGGER.warning("Failed to decode HWS019WRF-V2 payload: %s (raw: %r)", ex, raw)
-        return {"type": "hws019wrf_v2", "raw": raw, "error": str(ex)}
-import asyncio
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -66,7 +31,6 @@ class HomGarClient:
         self._refresh_token: str | None = None
         self._token_expires_at: datetime | None = None
 
-        # region host: you had region3; we can later make this configurable
         self._base_url = "https://region3.homgarus.com"
 
     # --- token state helpers ---
@@ -187,8 +151,9 @@ class HomGarClient:
         if data.get("code") != 0:
             raise HomGarApiError(f"getDeviceStatus failed: {data}")
         return data.get("data", {})
-    
-    # --- Payload decoding helpers ---
+
+
+# --- Payload decoding helpers ---
 
 def _parse_homgar_payload(raw: str) -> list[int]:
     """Turn '10#E1...' into [0-255] bytes list."""
@@ -211,6 +176,11 @@ def _le16(bytes_: list[int], index: int) -> int:
 def _f10_to_c(raw_f10: int) -> float:
     f = raw_f10 / 10.0
     return (f - 32.0) / 1.8
+
+
+def _le_val(parts) -> int:
+    """Interpret a list of bytes as a little-endian integer (LSB first)."""
+    return int(''.join(f'{x:02x}' for x in reversed(parts)), 16)
 
 
 def decode_moisture_simple(raw: str) -> dict:
@@ -345,33 +315,66 @@ def decode_rain(raw: str) -> dict:
     }
 
 
-# --- Additional decoders (stubs) for new sensor types ---
+def decode_hws019wrf_v2(raw: str) -> dict:
+    """
+    Decode HWS019WRF-V2 (Display Hub) CSV/semicolon payload.
+    Example: '1,0,1;788(788/777/1),68(68/64/1),P=9685(9684/9684/1),'
+    """
+    _LOGGER.debug("decode_hws019wrf_v2 called with raw: %r", raw)
+    try:
+        parts = raw.split(';')
+        # First part: status flags (e.g., '1,0,1')
+        flags = [int(x) for x in parts[0].split(',') if x.strip().isdigit()]
+        readings = {}
+        if len(parts) > 1:
+            for item in parts[1].split(','):
+                item = item.strip()
+                if not item:
+                    continue
+                if '(' in item:
+                    key, val = item.split('(', 1)
+                    readings[key.strip()] = val.strip(')')
+                elif '=' in item:
+                    key, val = item.split('=', 1)
+                    readings[key.strip()] = val.strip()
+        result = {
+            "type": "hws019wrf_v2",
+            "flags": flags,
+            "readings": readings,
+            "raw": raw,
+        }
+        _LOGGER.debug("decode_hws019wrf_v2 result: %r", result)
+        return result
+    except Exception as ex:
+        _LOGGER.warning("Failed to decode HWS019WRF-V2 payload: %s (raw: %r)", ex, raw)
+        return {"type": "hws019wrf_v2", "raw": raw, "error": str(ex)}
+
+
 def decode_temphum(raw: str) -> dict:
     """
     Decode HCS014ARF (temperature/humidity) payload.
+
+    All byte indices are 0-based after stripping the '10#' prefix.
+    Derived from Node-RED decoder: char position c → byte index (c - 3) / 2.
+
+      b[1-2]   : templow    (2-byte LE, F*10 → °C)
+      b[3-4]   : temphigh   (2-byte LE, F*10 → °C)
+      b[10-11] : tempcurrent (2-byte LE, F*10 → °C)
+      b[13]    : humiditycurrent (%)
+      b[15]    : humiditylow (%)
+      b[16]    : humidityhigh (%)
+      b[17-18] : battery (2-byte LE, /4095*100 → %)
     """
     b = _parse_homgar_payload(raw)
-    # See Node-RED: function "Temperature HCS014ARF"
-    part1 = b[7:9]
-    part2 = b[5:7]
-    part3 = b[11:13]
-    part4 = b[9:11]
-    part5 = b[25:27]
-    part6 = b[23:25]
-    part7 = b[29]
-    part8 = b[35]
-    part9 = b[33]
-    part10 = b[39:41]
-    part11 = b[37:39]
-    def le_val(parts):
-        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
-    templow = (((le_val(part1+part2) / 10) - 32) * (5 / 9)) if part1 and part2 else None
-    temphigh = (((le_val(part3+part4) / 10) - 32) * (5 / 9)) if part3 and part4 else None
-    tempcurrent = (((le_val(part5+part6) / 10) - 32) * (5 / 9)) if part5 and part6 else None
-    humiditycurrent = b[29] if len(b) > 29 else None
-    humidityhigh = b[35] if len(b) > 35 else None
-    humiditylow = b[33] if len(b) > 33 else None
-    tempbatt = (le_val(part10+part11) / 4095 * 100) if part10 and part11 else None
+
+    templow = ((_le_val(b[1:3]) / 10) - 32) * (5 / 9) if len(b) >= 3 else None
+    temphigh = ((_le_val(b[3:5]) / 10) - 32) * (5 / 9) if len(b) >= 5 else None
+    tempcurrent = ((_le_val(b[10:12]) / 10) - 32) * (5 / 9) if len(b) >= 12 else None
+    humiditycurrent = b[13] if len(b) > 13 else None
+    humiditylow = b[15] if len(b) > 15 else None
+    humidityhigh = b[16] if len(b) > 16 else None
+    tempbatt = _le_val(b[17:19]) / 4095 * 100 if len(b) >= 19 else None
+
     return {
         "type": "temphum",
         "templow": round(templow, 2) if templow is not None else None,
@@ -383,6 +386,7 @@ def decode_temphum(raw: str) -> dict:
         "tempbatt": round(tempbatt, 2) if tempbatt is not None else None,
         "raw_bytes": b,
     }
+
 
 def decode_flowmeter(raw: str) -> dict:
     """
@@ -421,15 +425,12 @@ def decode_flowmeter(raw: str) -> dict:
     """
     b = _parse_homgar_payload(raw)
 
-    def le_val(parts):
-        return int(''.join(f'{x:02x}' for x in reversed(parts)), 16)
-
-    flowcurrentused = le_val(b[21:24]) / 10 if len(b) >= 24 else None
-    flowcurrenduration = le_val(b[26:29]) if len(b) >= 29 else None
-    flowlastused = le_val(b[31:34]) / 10 if len(b) >= 34 else None
-    flowlastusedduration = le_val(b[37:40]) if len(b) >= 40 else None
-    flowtotaltoday = le_val(b[42:45]) / 10 if len(b) >= 45 else None
-    flowtotal = le_val(b[47:51]) / 10 if len(b) >= 51 else None
+    flowcurrentused = _le_val(b[21:24]) / 10 if len(b) >= 24 else None
+    flowcurrenduration = _le_val(b[26:29]) if len(b) >= 29 else None
+    flowlastused = _le_val(b[31:34]) / 10 if len(b) >= 34 else None
+    flowlastusedduration = _le_val(b[37:40]) if len(b) >= 40 else None
+    flowtotaltoday = _le_val(b[42:45]) / 10 if len(b) >= 45 else None
+    flowtotal = _le_val(b[47:51]) / 10 if len(b) >= 51 else None
     # Battery is stored big-endian (MSB at lower address)
     flowbatt = ((b[52] << 8) | b[53]) / 4095 * 100 if len(b) >= 54 else None
 
@@ -445,21 +446,32 @@ def decode_flowmeter(raw: str) -> dict:
         "raw_bytes": b,
     }
 
+
 def decode_co2(raw: str) -> dict:
     """
     Decode HCS0530THO (CO2/temp/humidity) payload.
+
+    All byte indices are 0-based after stripping the '10#' prefix.
+    Derived from Node-RED decoder: char position c → byte index (c - 3) / 2.
+
+      b[1-2]   : CO2 current (2-byte LE, ppm)
+      b[15-16] : co2temp (2-byte LE, F*10 → °C)
+      b[18]    : co2humidity (%)
+      b[24-25] : co2low (2-byte LE, ppm)
+      b[26-27] : co2high (2-byte LE, ppm)
+      b[28-29] : battery (2-byte LE, /4095*100 → %)
+      b[32]    : RSSI (subtract 256 for signed dBm)
     """
     b = _parse_homgar_payload(raw)
-    # See Node-RED: function "CO2 HCS0530THO"
-    def le_val(parts):
-        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
-    co2 = le_val(b[7:9]+b[5:7]) if len(b) >= 9 else None
-    co2low = le_val(b[53:55]+b[51:53]) if len(b) >= 55 else None
-    co2high = le_val(b[57:59]+b[55:57]) if len(b) >= 59 else None
-    co2temp = (((le_val(b[35:37]+b[33:35]) / 10) - 32) * (5 / 9)) if len(b) >= 37 else None
-    co2humidity = b[39] if len(b) > 39 else None
-    co2batt = le_val(b[61:63]+b[59:61]) / 4095 * 100 if len(b) >= 63 else None
-    co2rssi = b[67] - 256 if len(b) > 67 and b[67] > 127 else b[67] if len(b) > 67 else None
+
+    co2 = _le_val(b[1:3]) if len(b) >= 3 else None
+    co2low = _le_val(b[24:26]) if len(b) >= 26 else None
+    co2high = _le_val(b[26:28]) if len(b) >= 28 else None
+    co2temp = (((_le_val(b[15:17]) / 10) - 32) * (5 / 9)) if len(b) >= 17 else None
+    co2humidity = b[18] if len(b) > 18 else None
+    co2batt = _le_val(b[28:30]) / 4095 * 100 if len(b) >= 30 else None
+    co2rssi = b[32] - 256 if len(b) > 32 else None
+
     return {
         "type": "co2",
         "co2": co2,
@@ -472,18 +484,27 @@ def decode_co2(raw: str) -> dict:
         "raw_bytes": b,
     }
 
+
 def decode_pool(raw: str) -> dict:
     """
     Decode HCS0528ARF (pool/temperature) payload.
+
+    All byte indices are 0-based after stripping the '10#' prefix.
+    Derived from Node-RED decoder: char position c → byte index (c - 3) / 2.
+
+      b[1-2]   : templow    (2-byte LE, F*10 → °C)
+      b[3-4]   : temphigh   (2-byte LE, F*10 → °C)
+      b[10-11] : tempcurrent (2-byte LE, F*10 → °C)
+      b[13], b[11] : battery (non-sequential per Node-RED, /4095*100 → %)
     """
     b = _parse_homgar_payload(raw)
-    # See Node-RED: function "Pool"
-    def le_val(parts):
-        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
-    templow = (((le_val(b[7:9]+b[5:7]) / 10) - 32) * (5 / 9)) if len(b) >= 9 else None
-    temphigh = (((le_val(b[11:13]+b[9:11]) / 10) - 32) * (5 / 9)) if len(b) >= 13 else None
-    tempcurrent = (((le_val(b[25:27]+b[23:25]) / 10) - 32) * (5 / 9)) if len(b) >= 27 else None
-    tempbatt = le_val(b[29:31]+b[25:27]) / 4095 * 100 if len(b) >= 31 else None
+
+    templow = ((_le_val(b[1:3]) / 10) - 32) * (5 / 9) if len(b) >= 3 else None
+    temphigh = ((_le_val(b[3:5]) / 10) - 32) * (5 / 9) if len(b) >= 5 else None
+    tempcurrent = ((_le_val(b[10:12]) / 10) - 32) * (5 / 9) if len(b) >= 12 else None
+    # Battery uses non-sequential bytes b[13] (high) and b[11] (low) per Node-RED reference
+    tempbatt = ((b[13] << 8) | b[11]) / 4095 * 100 if len(b) >= 14 else None
+
     return {
         "type": "pool",
         "templow": round(templow, 2) if templow is not None else None,

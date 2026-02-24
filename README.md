@@ -1,26 +1,23 @@
 # HomGar Cloud integration for Home Assistant
 
-Unofficial Home Assistant component for HomGar Cloud, supporting RF soil moisture and rain sensors via the HomGar cloud API.
+Unofficial Home Assistant component for HomGar Cloud, supporting RF soil moisture, rain, flow meter, temperature/humidity, CO2, and pool temperature sensors via the HomGar cloud API.
+
+This is a personal fork of [brettmeyerowitz/homeassistant-homgar](https://github.com/brettmeyerowitz/homeassistant-homgar), tweaked to work with my own setup. Though you're welcome to use this fork as-is, it is not actively maintained — if you're looking for a general-purpose integration, the original repository is a better starting point.
 
 ---
 
 ## Compatibility
 
-Tested with:
+Personally tested with:
 - Hub: `HWG023WBRF-V2`
-- Soil moisture probes:
-  - `HCS026FRF` (moisture-only)
-  - `HCS021FRF` (moisture + temperature + lux)
-- Rain gauge:
-  - `HCS012ARF`
-- Temperature/Humidity:
-  - `HCS014ARF`
-- Flowmeter:
-  - `HCS008FRF`
-- CO2/Temperature/Humidity:
-  - `HCS0530THO`
-- Pool/Temperature:
-  - `HCS0528ARF`
+- Rain gauge: `HCS012ARF`
+- Flowmeter: `HCS008FRF`
+
+The following are supported in code (ported from the original) but not personally tested:
+- Soil moisture probes: `HCS026FRF`, `HCS021FRF`
+- Temperature/Humidity: `HCS014ARF`
+- CO2/Temperature/Humidity: `HCS0530THO`
+- Pool/Temperature: `HCS0528ARF`
 
 The integration communicates with the same cloud endpoints as the HomGar app (`region3.homgarus.com`).
 
@@ -39,12 +36,12 @@ The integration communicates with the same cloud endpoints as the HomGar app (`r
     - Last hour
     - Last 24 hours
     - Last 7 days
-    - Total rainfall
-  - Temperature/Humidity (HCS014ARF)
-  - Flowmeter readings (HCS008FRF)
-  - CO2, temperature, humidity (HCS0530THO)
-  - Pool temperature (HCS0528ARF)
-- Attributes:
+    - Total rainfall (`TOTAL_INCREASING` for Utility Meter / statistics)
+  - Temperature/Humidity (HCS014ARF): current, high, low + humidity
+  - Flowmeter (HCS008FRF): current session, last session, total today, all-time total (`TOTAL_INCREASING`), battery
+  - CO2, temperature, humidity, battery (HCS0530THO)
+  - Pool temperature: current, high, low, battery (HCS0528ARF)
+- Attributes per sensor:
   - `rssi_dbm`
   - `battery_status_code`
   - `last_updated` (cloud timestamp)
@@ -57,9 +54,11 @@ The integration communicates with the same cloud endpoints as the HomGar app (`r
 
 You can quickly add this repository to HACS by clicking the button below:
 
-[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=brettmeyerowitz&repository=homeassistant-homgar&category=integration)
+[![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=fredi-e&repository=homeassistant-homgar&category=integration)
 
-#### Manual Installation
+Or add it manually in HACS: **HACS → Integrations → ⋮ → Custom repositories** and add `https://github.com/fredi-e/homeassistant-homgar` as an Integration.
+
+### Manual Installation
 
 1. Copy the `custom_components/homgar` folder into your Home Assistant `config/custom_components/` directory.
 2. Restart Home Assistant.
@@ -72,36 +71,31 @@ Go to **Settings → Devices & Services → Add Integration** and search for **H
 
 ---
 
-## Example manifest.json
+## Tracking daily/monthly usage (Utility Meter)
 
-Below is the manifest file for this integration (as of version 0.1.1):
+The `Flow Total` and `Rain Total` sensors use `state_class: total_increasing`, making them compatible with Home Assistant's [Utility Meter](https://www.home-assistant.io/integrations/utility_meter/) integration for calendar-based daily and monthly tracking.
 
-```json
-{
-    "domain": "homgar",
-    "name": "HomGar Cloud",
-    "version": "0.1.1",
-    "documentation": "https://github.com/brettmeyerowitz/homeassistant-homgar",
-    "issue_tracker": "https://github.com/brettmeyerowitz/homeassistant-homgar/issues",
-    "requirements": [],
-    "codeowners": [
-        "@brettmeyerowitz"
-    ],
-    "config_flow": true,
-    "iot_class": "cloud_polling",
-    "integration_type": "hub",
-    "loggers": [
-        "custom_components.homgar"
-    ]
-}
+Example `configuration.yaml`:
+
+```yaml
+utility_meter:
+  flow_daily:
+    source: sensor.borehole_flow_flow_total
+    cycle: daily
+  flow_monthly:
+    source: sensor.borehole_flow_flow_total
+    cycle: monthly
+  rain_monthly:
+    source: sensor.rain_meter_rain_total
+    cycle: monthly
 ```
 
 ---
 
 ## Credits
 
-This integration was developed by Brett Meyerowitz. It is not affiliated with HomGar.
+Originally developed by [Brett Meyerowitz](https://github.com/brettmeyerowitz). Tweaked by [@fredi-e](https://github.com/fredi-e) for personal use.
 
 **Special thanks to [shaundekok/rainpoint](https://github.com/shaundekok/rainpoint) for Node-RED flow inspiration, payload decoding, and entity mapping logic.**
 
-Feedback and contributions are welcome!
+Feedback and contributions are welcome via the [issue tracker](https://github.com/fredi-e/homeassistant-homgar/issues).
