@@ -387,18 +387,52 @@ def decode_temphum(raw: str) -> dict:
 def decode_flowmeter(raw: str) -> dict:
     """
     Decode HCS008FRF (flowmeter) payload.
+
+    Packet layout (byte indices, 0-based, after stripping '10#' prefix):
+      b[0]       : 0xE1 marker
+      b[1]       : RSSI / counter
+      b[2]       : 0x00
+      b[3-4]     : FF 0B marker+tag
+      b[5-8]     : zeros
+      b[9-13]    : DC 01 99 00 00  (counters/version)
+      b[14-18]   : 5-byte timestamp 1
+      b[19]      : 0xFF marker
+      b[20]      : 0x07 tag (current flow)
+      b[21-23]   : flowcurrentused  (3-byte LE, /10 → litres)
+      b[24]      : 0x00
+      b[25]      : 0xAF tag (current duration)
+      b[26-28]   : flowcurrenduration  (3-byte LE, seconds)
+      b[29]      : 0x00
+      b[30]      : 0x9F tag (last used)
+      b[31-33]   : flowlastused  (3-byte LE, /10 → litres)
+      b[34]      : 0x00
+      b[35]      : 0xFF marker
+      b[36]      : 0x0A tag (last duration)
+      b[37-39]   : flowlastusedduration  (3-byte LE, seconds)
+      b[40]      : 0x00
+      b[41]      : 0xCB tag (total today)
+      b[42-44]   : flowtotaltoday  (3-byte LE, /10 → litres)
+      b[45]      : 0x00
+      b[46]      : 0xB3 tag (total)
+      b[47-50]   : flowtotal  (4-byte LE, /10 → litres)
+      b[51]      : 0xFF marker
+      b[52-53]   : battery  (2-byte BE, /4095*100 → %)
+      b[54-56]   : 3-byte timestamp 2 tail
     """
     b = _parse_homgar_payload(raw)
-    # See Node-RED: function "Flowmeter HCS008FRF"
+
     def le_val(parts):
-        return int(''.join(f'{x:02x}' for x in parts[::-1]), 16)
-    flowcurrentused = le_val(b[49:52]) / 10 if len(b) >= 52 else None
-    flowcurrenduration = le_val(b[59:62]) if len(b) >= 62 else None
-    flowlastused = le_val(b[69:72]) / 10 if len(b) >= 72 else None
-    flowlastusedduration = le_val(b[81:84]) if len(b) >= 84 else None
-    flowtotaltoday = le_val(b[91:94]) / 10 if len(b) >= 94 else None
-    flowtotal = le_val(b[103:107]) / 10 if len(b) >= 107 else None
-    flowbatt = le_val(b[107:111]) / 4095 * 100 if len(b) >= 111 else None
+        return int(''.join(f'{x:02x}' for x in reversed(parts)), 16)
+
+    flowcurrentused = le_val(b[21:24]) / 10 if len(b) >= 24 else None
+    flowcurrenduration = le_val(b[26:29]) if len(b) >= 29 else None
+    flowlastused = le_val(b[31:34]) / 10 if len(b) >= 34 else None
+    flowlastusedduration = le_val(b[37:40]) if len(b) >= 40 else None
+    flowtotaltoday = le_val(b[42:45]) / 10 if len(b) >= 45 else None
+    flowtotal = le_val(b[47:51]) / 10 if len(b) >= 51 else None
+    # Battery is stored big-endian (MSB at lower address)
+    flowbatt = ((b[52] << 8) | b[53]) / 4095 * 100 if len(b) >= 54 else None
+
     return {
         "type": "flowmeter",
         "flowcurrentused": flowcurrentused,
@@ -407,7 +441,7 @@ def decode_flowmeter(raw: str) -> dict:
         "flowlastusedduration": flowlastusedduration,
         "flowtotaltoday": flowtotaltoday,
         "flowtotal": flowtotal,
-        "flowbatt": round(flowbatt, 2) if flowbatt is not None else None,
+        "flowbatt": round(flowbatt, 1) if flowbatt is not None else None,
         "raw_bytes": b,
     }
 
